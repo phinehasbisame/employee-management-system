@@ -1,26 +1,30 @@
 import express from "express";
 import { MONGODB_URI, PORT } from "./config/dotenv.js";
 import authRoute from "./routes/auth.route.js";
+import userRoute from "./routes/users.route.js";
 import mongoose from "mongoose";
 import HttpError from "./utils/http-error.js";
+import roleRoute from "./routes/role.route.js";
 // create an express app instance
 const app = express();
 // connect app to database and display a text when database is connected successfully
 mongoose
     .connect(MONGODB_URI)
-    .then(() => console.log("Connected to database successfully"));
+    .then(() => console.log("Connected to database successfully"))
+    .catch((err) => console.log(err.message));
 // accept json data
 app.use(express.json());
 // auth routes
 app.use("/api/auth", authRoute);
-// user and role management
-// app.use("/api/users", userRoute);
+// user management routes
+app.use("/api/users", userRoute);
+// role management routes
+app.use("/api/roles", roleRoute);
 // Handle error gracefully when one occurs using a middleware
 app.use((error, request, response, next) => {
     if (response.headersSent) {
         return next(error);
     }
-    console.log(error.message);
     response
         .status(error.code || 500)
         .json({ success: false, message: error.message });
