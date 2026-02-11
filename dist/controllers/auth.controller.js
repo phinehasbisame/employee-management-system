@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import { validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/dotenv.js";
+import { sendEmail } from "../services/email.service.js";
 const saltRounds = 12;
 // register controller
 const registerUser = async (request, response, next) => {
@@ -74,15 +75,12 @@ const loginUser = async (request, response, next) => {
                 const token = jwt.sign({ userId: userInfo?.id, email }, JWT_SECRET, {
                     expiresIn: "5m",
                 });
-                return response
-                    .status(200)
-                    .cookie("token", token, {
+                response.cookie("jwt-token", token, {
+                    expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+                    secure: false,
                     httpOnly: true,
-                    secure: true,
-                    sameSite: "strict",
-                    maxAge: 24 * 60 * 60 * 60 * 1000,
-                })
-                    .json({
+                });
+                return response.status(200).json({
                     success: true,
                     message: "Login successful",
                     data: {
@@ -129,6 +127,16 @@ const forgotPassword = async (request, response, next) => {
             const updatePassword = await Register.findOneAndUpdate({ email }, { password: hashedPassword });
             console.log(updatePassword);
             if (updatePassword) {
+                // send a password updated successfully via email
+                const email = updatePassword.email;
+                const message = "Password reset successful";
+                const subject = "Reset Password";
+                try {
+                    await sendEmail({ email, message, subject }, next);
+                }
+                catch (error) {
+                    return throwError("Failed to send email as password updated successfully", 500, next);
+                }
                 return response.status(200).json({
                     success: true,
                     message: "Updated password successfully",

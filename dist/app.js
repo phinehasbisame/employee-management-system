@@ -1,17 +1,31 @@
 import express from "express";
-import { MONGODB_URI, PORT } from "./config/dotenv.js";
+import { PORT } from "./config/dotenv.js";
 import authRoute from "./routes/auth.route.js";
 import userRoute from "./routes/users.route.js";
-import mongoose from "mongoose";
 import HttpError from "./utils/http-error.js";
 import roleRoute from "./routes/role.route.js";
+import { checkForEnv } from "./middleware/env.middleware.js";
+import { connectDatabase } from "./services/mongoose.service.js";
+import morgan from "morgan";
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 // create an express app instance
 const app = express();
+// middleware to handle env load
+app.use(checkForEnv);
 // connect app to database and display a text when database is connected successfully
-mongoose
-    .connect(MONGODB_URI)
-    .then(() => console.log("Connected to database successfully"))
-    .catch((err) => console.log(err.message));
+await connectDatabase();
+// if (process.env.NODE_ENV === "development") {
+app.use(morgan("dev"));
+// }
+// rate limit accept 100 request
+const limiter = rateLimit({
+    max: 100,
+    windowMs: 1000,
+});
+app.use(limiter);
+// use helmet middleware for security
+app.use(helmet());
 // accept json data
 app.use(express.json());
 // auth routes
